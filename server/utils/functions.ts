@@ -10,7 +10,7 @@ import {
   isArray,
   first,
 } from 'lodash';
-import { Id, IStrapi, Primitive, StrapiContentType, StrapiPlugin, StringMap } from "strapi-typed";
+import { Id, IStrapi, Primitive, StrapiContentType, StringMap, StrapiContentTypeFullSchema} from "strapi-typed";
 
 import { AuditLogContext, AuditLogParams, ContentTypeEntity, NavigationActions, NavigationItem, NavigationItemEntity, NavigationService, NavigationServiceName, NestedPath, NestedStructure, PluginConfigNameFields, ToBeFixed } from "../../types";
 import { NavigationError } from '../../utils/NavigationError';
@@ -202,20 +202,6 @@ export const singularize = (
   return last(value) === 's' ? value.substr(0, value.length - 1) : value;
 };
 
-export const extractMeta = (
-  plugins: { [uid: string]: StrapiPlugin }
-) => {
-  const { navigation: plugin } = plugins;
-  return {
-    masterModel: plugin.contentType('navigation'),
-    itemModel: plugin.contentType('navigation-item'),
-    relatedModel: plugin.contentType('navigations-items-related'),
-    audienceModel: plugin.contentType('audience'),
-    plugin,
-    pluginName: 'navigation',
-  };
-};
-
 export const buildNestedStructure = (
   entities: NavigationItemEntity<ContentTypeEntity>[],
   id: Id | null = null,
@@ -297,3 +283,13 @@ export const isContentTypeEligible = (
   const isNoneOfRestricted = RESTRICTED_CONTENT_TYPES.filter(_ => uid.includes(_) || (uid === _)).length === 0;
   return uid && isOneOfAllowedType && isNoneOfRestricted;
 }
+
+export const getPluginModels = (): Record<string, StrapiContentTypeFullSchema> => {
+  const plugin = strapi.plugin('navigation');
+  return {
+    masterModel: plugin.contentType('navigation'),
+    itemModel: plugin.contentType('navigation-item'),
+    relatedModel: plugin.contentType('navigations-items-related'),
+    audienceModel: plugin.contentType('audience'),
+  }
+};
