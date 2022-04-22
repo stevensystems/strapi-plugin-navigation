@@ -1,6 +1,7 @@
 import {
   assertNotEmpty,
   IConfigSetupStrategy,
+  NavigationItemAdditionalField,
   NavigationPluginConfig,
   PluginConfigGraphQL,
   PluginConfigKeys,
@@ -25,7 +26,7 @@ export const configSetupStrategy: IConfigSetupStrategy = async ({ strapi }) => {
   const getWithFallback = getWithFallbackFactory(config, getFromPluginDefaults);
 
   config = {
-    additionalFields: getWithFallback<string[]>("additionalFields"),
+    additionalFields: getWithFallback<NavigationItemAdditionalField[]>("additionalFields"),
     contentTypes: getWithFallback<string[]>("contentTypes"),
     contentTypesNameFields: getWithFallback<PluginConfigNameFields>(
       "contentTypesNameFields"

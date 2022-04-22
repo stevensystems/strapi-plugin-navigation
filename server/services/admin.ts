@@ -12,7 +12,6 @@ import {
   ToBeFixed
 } from "../../types";
 import {
-  ADDITIONAL_FIELDS,
   ALLOWED_CONTENT_TYPES,
   buildNestedStructure,
   CONTENT_TYPES_NAME_FIELDS_DEFAULTS,
@@ -64,7 +63,7 @@ const adminService: (context: StrapiContext) => IAdminService = ({ strapi }) => 
     };
     const i18nConfig = await addI18NConfigFields({ strapi, viaSettingsPage, previousConfig: {} });
 
-    if (additionalFields.includes(ADDITIONAL_FIELDS.AUDIENCE)) {
+    if (additionalFields.includes('audience')) {
       const audienceItems = await strapi
         .query<Audience>(audienceModel.uid)
         .findMany({
