@@ -1,26 +1,73 @@
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { debounce, find, get, first, isEmpty, isEqual, isNil, isString } from 'lodash';
-import PropTypes from 'prop-types';
-import { Formik } from 'formik'
 import slugify from 'slugify';
+//@ts-ignore
+import { Formik } from 'formik';
 
 // Design System
+//@ts-ignore
 import { ModalBody } from '@strapi/design-system/ModalLayout';
+//@ts-ignore
 import { Select, Option } from '@strapi/design-system/Select';
+//@ts-ignore
 import { Grid, GridItem } from '@strapi/design-system/Grid';
+//@ts-ignore
 import { Form, GenericInput } from '@strapi/helper-plugin';
 
 import { NavigationItemPopupFooter } from '../NavigationItemPopup/NavigationItemPopupFooter';
-import { navigationItemAdditionalFields, navigationItemType } from '../../utils/enums';
+import { navigationItemType } from '../../utils/enums';
 import { extractRelatedItemLabel } from '../../utils/parsers';
 import { form as formDefinition } from './utils/form';
 import { checkFormValidity } from '../../utils/form';
 import { getTradId } from '../../../../translations';
 import { getMessage } from '../../../../utils';
+import { Audience, NavigationItemAdditionalField, NavigationItemType, PluginConfigNameFields, ToBeFixed } from '../../../../../../types';
+import { Id } from 'strapi-typed';
 
-const NavigationItemForm = ({
+interface NavigationItemFormProps {
+  isLoading: boolean;
+  inputsPrefix: string;
+  data: ToBeFixed; // TODO: Type this pls
+  contentTypes: Array<ToBeFixed>; // TODO: Type this pls
+  contentTypeEntities: Array<ToBeFixed>; // TODO: Type this pls
+  usedContentTypeEntities: Array<ToBeFixed>; // TODO: Type this pls
+  availableAudience: Array<string>;
+  additionalFields: Array<NavigationItemAdditionalField>;
+  contentTypesNameFields: PluginConfigNameFields;
+  onSubmit: (payload: SanitizedFormPayload) => void;
+  onCancel: () => ToBeFixed; // TODO: Type this pls
+  getContentTypeEntities: (value: {modelUID: string, query: ContentTypeSearchQuery }, plugin: string) => ToBeFixed // TODO: Type this pls
+  usedContentTypesData: ToBeFixed; // TODO: Type this pls
+  appendLabelPublicationStatus: (label: string, entity: ToBeFixed) => string; // TODO: Content type entity type
+}
+type ContentTypeSearchQuery = ToBeFixed;
+type RawFormPayload = {
+  type: NavigationItemType;
+  related: string;
+  relatedType: string;
+  audience: number;
+  menuAttached: boolean;
+  title: string;
+  externalPath: string;
+  path: string;
+}
+
+type SanitizedFormPayload = {
+  title: string;
+  type: NavigationItemType;
+  menuAttached: boolean;
+  path: string | undefined;
+  externalPath: string | undefined;
+  related: Id | undefined;
+  relatedType: string | undefined;
+  isSingle: boolean;
+  singleRelatedItem: ToBeFixed; // TODO: This is contentTypeEntity type or undefined
+  uiRouterKey: string | undefined;
+}
+
+const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
   isLoading,
-  inputsPrefix,
+  inputsPrefix = '',
   data = {},
   contentTypes = [],
   contentTypeEntities = [],
@@ -37,9 +84,9 @@ const NavigationItemForm = ({
 }) => {
   const [hasBeenInitialized, setInitializedState] = useState(false);
   const [hasChanged, setChangedState] = useState(false);
-  const [contentTypeSearchQuery, setContentTypeSearchQuery] = useState(undefined);
+  const [contentTypeSearchQuery, setContentTypeSearchQuery] = useState<ContentTypeSearchQuery>(undefined);
   const [contentTypeSearchInputValue, setContentTypeSearchInputValue] = useState(undefined);
-  const [form, setFormState] = useState({});
+  const [form, setFormState] = useState<Partial<RawFormPayload>>({});
   const [formErrors, setFormErrorsState] = useState({});
   const { relatedType } = form;
 
@@ -52,7 +99,7 @@ const NavigationItemForm = ({
       type: data.type || navigationItemType.INTERNAL,
       related: data.related?.value,
       relatedType: data.relatedType?.value,
-      audience: data.audience?.map(item => item.id),
+      audience: data.audience?.map((item: Audience) => item.id),
     });
   }
 
@@ -74,13 +121,13 @@ const NavigationItemForm = ({
     return null;
   };
 
-  const sanitizePayload = (payload = {}) => {
-    const { onItemClick, onItemLevelAddClick, related, relatedType, menuAttached, type, ...purePayload } = payload;
+  const sanitizePayload = (payload: RawFormPayload): SanitizedFormPayload => {
+    const { related, relatedType, menuAttached, type, ...purePayload } = payload;
     const relatedId = related;
     const singleRelatedItem = isSingleSelected ? first(contentTypeEntities) : undefined;
     const relatedCollectionType = relatedType;
     const title = payload.title;
-    
+
     return {
       ...purePayload,
       title,
@@ -96,12 +143,12 @@ const NavigationItemForm = ({
     };
   };
 
-  const handleSubmit = async e => {
+  const handleSubmit = async (e: React.FormEvent) => {
     if (e) {
       e.preventDefault();
     }
 
-    const payload = sanitizePayload(form);
+    const payload = sanitizePayload(form as RawFormPayload);
     const errors = await checkFormValidity(payload, formDefinition.schema(isSingleSelected));
     if (!errors || isEmpty(errors)) {
       return onSubmit(payload);
@@ -110,11 +157,11 @@ const NavigationItemForm = ({
     }
   };
 
-  const onAudienceChange = (value) => {
+  const onAudienceChange = (value: string) => {
     onChange({ target: { name: `${inputsPrefix}audience`, value } });
   }
 
-  const onChange = ({ target: { name, value } }) => {
+  const onChange = ({ target: { name, value } }: { target: { name: string, value: unknown } }) => {
     setFormState(prevState => ({
       ...prevState,
       updated: true,
@@ -125,7 +172,7 @@ const NavigationItemForm = ({
     }
   };
 
-  const generateUiRouterKey = (title, related, relatedType) => {
+  const generateUiRouterKey = (title: string, related: string, relatedType: string): string | undefined => {
     if (title) {
       return isString(title) && !isEmpty(title) ? slugify(title).toLowerCase() : undefined;
     } else if (related) {
@@ -147,7 +194,8 @@ const NavigationItemForm = ({
     [relatedTypeSelectValue, contentTypes],
   );
 
-  const navigationItemTypeOptions = Object.keys(navigationItemType).map(key => {
+  const navigationItemTypeOptions = Object.keys(navigationItemType).map((k) => {
+    const key = k as keyof typeof navigationItemType; // TODO: Maybe could be refactored later
     const value = navigationItemType[key].toLowerCase();
     return {
       key,
@@ -200,12 +248,12 @@ const NavigationItemForm = ({
     [],
   );
 
-  const debounceContentTypeSearchQuery = value => {
+  const debounceContentTypeSearchQuery = (value: ToBeFixed) => {
     setContentTypeSearchInputValue(value);
     debouncedSearch(value);
   };
 
-  const onChangeRelatedType = ({ target: { name, value } }) => {
+  const onChangeRelatedType = ({ target: { name, value } }: { target: { name: string, value: unknown } }) => {
     const relatedTypeBeingReverted = data.relatedType && (data.relatedType.value === get(value, 'value', value));
     setContentTypeSearchQuery(undefined);
     setContentTypeSearchInputValue(undefined);
@@ -227,7 +275,7 @@ const NavigationItemForm = ({
           if (relatedTypeSelectValue && [relatedTypeSelectValue, initialRelatedTypeSelected].includes(contentType.uid)) {
             return true;
           }
-          return !usedContentTypesData.some((_) => _.__collectionUid === contentType.uid && _.__collectionUid !== form.relatedType);
+          return !usedContentTypesData.some((_: ToBeFixed) => _.__collectionUid === contentType.uid && _.__collectionUid !== form.relatedType);
         }
         return true;
       })
@@ -281,14 +329,15 @@ const NavigationItemForm = ({
       <Formik>
         <Form>
           <ModalBody>
-            <Grid gap={5}>
-              <GridItem key={`${inputsPrefix}title`} col={12}>
+            <Grid gap={5} >
+              <GridItem key={`${inputsPrefix}title`} col={12} >
                 <GenericInput
                   autoFocused={true}
                   intlLabel={{
                     id: getTradId('popup.item.form.title.label'),
                     defaultMessage: 'Title',
-                  }}
+                  }
+                  }
                   name={`${inputsPrefix}title`}
                   placeholder={{
                     id: "e.g. Blog",
@@ -301,44 +350,44 @@ const NavigationItemForm = ({
                   type='text'
                   error={get(formErrors, `${inputsPrefix}title.id`)}
                   onChange={onChange}
-                  value={get(form, `${inputsPrefix}title`, '')}
+                  value={get(form, `${inputsPrefix} title`, '')}
                 />
               </GridItem>
-              <GridItem key={`${inputsPrefix}type`} col={4} lg={12}>
+              <GridItem key={`${inputsPrefix} type`} col={4} lg={12}>
                 <GenericInput
                   intlLabel={{
                     id: getTradId('popup.item.form.type.label'),
                     defaultMessage: 'Internal link',
                   }}
-                  name={`${inputsPrefix}type`}
+                  name={`${inputsPrefix} type`}
                   options={navigationItemTypeOptions}
                   type='select'
-                  error={get(formErrors, `${inputsPrefix}type.id`)}
+                  error={get(formErrors, `${inputsPrefix} type.id`)}
                   onChange={onChange}
-                  value={get(form, `${inputsPrefix}type`, '')}
+                  value={get(form, `${inputsPrefix} type`, '')}
                 />
               </GridItem>
-              <GridItem key={`${inputsPrefix}menuAttached`} col={4} lg={12}>
+              <GridItem key={`${inputsPrefix} menuAttached`} col={4} lg={12}>
                 <GenericInput
                   intlLabel={{
                     id: getTradId('popup.item.form.menuAttached.label'),
                     defaultMessage: 'MenuAttached',
                   }}
-                  name={`${inputsPrefix}menuAttached`}
+                  name={`${inputsPrefix} menuAttached`}
                   type='bool'
-                  error={get(formErrors, `${inputsPrefix}menuAttached.id`)}
+                  error={get(formErrors, `${inputsPrefix} menuAttached.id`)}
                   onChange={onChange}
-                  value={get(form, `${inputsPrefix}menuAttached`, '')}
+                  value={get(form, `${inputsPrefix} menuAttached`, '')}
                   disabled={!(data.isMenuAllowedLevel && data.parentAttachedToMenu)}
                 />
               </GridItem>
-              <GridItem key={`${inputsPrefix}path`} col={12}>
+              <GridItem key={`${inputsPrefix} path`} col={12}>
                 <GenericInput
                   intlLabel={{
                     id: getTradId(`popup.item.form.${pathSourceName}.label`),
                     defaultMessage: 'Path',
                   }}
-                  name={`${inputsPrefix}${pathSourceName}`}
+                  name={`${inputsPrefix}${pathSourceName} `}
                   placeholder={{
                     id: getTradId(`popup.item.form.${pathSourceName}.placeholder`),
                     defaultMessage: 'e.g. Blog',
@@ -346,11 +395,11 @@ const NavigationItemForm = ({
                   type='text'
                   error={get(formErrors, `${inputsPrefix}${pathSourceName}.id`)}
                   onChange={onChange}
-                  value={get(form, `${inputsPrefix}${pathSourceName}`, '')}
+                  value={get(form, `${inputsPrefix}${pathSourceName} `, '')}
                   description={generatePreviewPath()}
                 />
               </GridItem>
-              {get(form, `${inputsPrefix}type`) === navigationItemType.INTERNAL && (
+              {get(form, `${inputsPrefix} type`) === navigationItemType.INTERNAL && (
                 <>
                   <GridItem col={6} lg={12}>
                     <GenericInput
@@ -363,8 +412,8 @@ const NavigationItemForm = ({
                         id: getTradId('popup.item.form.relatedType.placeholder'),
                         defaultMessage: 'Related Type'
                       }}
-                      name={`${inputsPrefix}relatedType`}
-                      error={get(formErrors, `${inputsPrefix}relatedType.id`)}
+                      name={`${inputsPrefix} relatedType`}
+                      error={get(formErrors, `${inputsPrefix} relatedType.id`)}
                       onChange={onChangeRelatedType}
                       options={relatedTypeSelectOptions}
                       value={relatedTypeSelectValue}
@@ -414,10 +463,10 @@ const NavigationItemForm = ({
                 </>
               )}
 
-              {additionalFields.includes(navigationItemAdditionalFields.AUDIENCE) && (
-                <GridItem key={`${inputsPrefix}audience`} col={6} lg={12}>
+              {additionalFields.includes('audience') && (
+                <GridItem key={`${inputsPrefix} audience`} col={6} lg={12}>
                   <Select
-                    id={`${inputsPrefix}audience`}
+                    id={`${inputsPrefix} audience`}
                     placeholder={getMessage('popup.item.form.audience.placeholder')}
                     label={getMessage('popup.item.form.audience.label')}
                     onChange={onAudienceChange}
@@ -442,32 +491,6 @@ const NavigationItemForm = ({
       <NavigationItemPopupFooter handleSubmit={handleSubmit} handleCancel={onCancel} submitDisabled={submitDisabled} />
     </>
   );
-};
-
-NavigationItemForm.defaultProps = {
-  fieldsToDisable: [],
-  formErrors: {},
-  inputsPrefix: '',
-  onSubmit: (e) => e.preventDefault(),
-  requestError: null,
-};
-
-NavigationItemForm.propTypes = {
-  isLoading: PropTypes.bool,
-  fieldsToDisable: PropTypes.array,
-  formErrors: PropTypes.object.isRequired,
-  inputsPrefix: PropTypes.string,
-  data: PropTypes.object.isRequired,
-  onSubmit: PropTypes.func,
-  requestError: PropTypes.object,
-  contentTypes: PropTypes.array,
-  contentTypeEntities: PropTypes.array,
-  usedContentTypeEntities: PropTypes.array,
-  availableAudience: PropTypes.array,
-  additionalFields: PropTypes.array,
-  getContentTypeEntities: PropTypes.func.isRequired,
-  appendLabelPublicationStatus: PropTypes.func,
-  onCancel: PropTypes.func,
 };
 
 export default NavigationItemForm;
