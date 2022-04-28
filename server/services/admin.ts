@@ -146,7 +146,7 @@ const adminService: (context: StrapiContext) => IAdminService = ({ strapi }) => 
     return result
   },
 
-  async put(id: Id, payload: ToBeFixed, auditLog: AuditLogContext) {
+  async put(id: Id, payload: Navigation & { items: ToBeFixed }, auditLog: AuditLogContext) {
     const adminService = getPluginService<IAdminService>('admin');
     const commonService = getPluginService<ICommonService>('common');
 
