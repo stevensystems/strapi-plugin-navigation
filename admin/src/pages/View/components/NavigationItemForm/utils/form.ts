@@ -1,17 +1,19 @@
 import * as yup from "yup";
 import { isNil } from "lodash";
+//@ts-ignore
 import { translatedErrors } from "@strapi/helper-plugin";
 import { navigationItemType } from "../../../utils/enums";
 import pluginId from "../../../../../pluginId";
+import { NavigationItemType } from "../../../../../../../types";
 
 export const form = {
   fieldsToDisable: [],
   fieldsToOmit: [],
-  schema(isSingleSelected) {
+  schema(isSingleSelected: boolean) {
     return yup.object({
       title: yup.string()
         .when('type', {
-          is: val => val === navigationItemType.EXTERNAL,
+          is: (val: NavigationItemType) => val === navigationItemType.EXTERNAL,
           then: yup.string()
             .required(translatedErrors.required),
           otherwise: yup.string().notRequired(),
@@ -20,13 +22,13 @@ export const form = {
       type: yup.string().required(translatedErrors.required),
       path: yup.string()
         .when('type', {
-          is: val => val === navigationItemType.INTERNAL || isNil(val),
+          is: (val: NavigationItemType) => val === navigationItemType.INTERNAL || isNil(val),
           then: yup.string().required(translatedErrors.required),
           otherwise: yup.string().notRequired(),
         }),
       externalPath: yup.string()
         .when('type', {
-          is: val => val === navigationItemType.EXTERNAL,
+          is: (val: NavigationItemType) => val === navigationItemType.EXTERNAL,
           then: yup.string()
             .required(translatedErrors.required)
             .matches(/(#.*)|(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/, { 
@@ -38,13 +40,13 @@ export const form = {
       menuAttached: yup.boolean(),
       relatedType: yup.mixed()
         .when('type', {
-          is: val => val === navigationItemType.INTERNAL || isNil(val),
+          is: (val: NavigationItemType) => val === navigationItemType.INTERNAL || isNil(val),
           then: isSingleSelected ? yup.mixed().notRequired() : yup.mixed().required(translatedErrors.required),
           otherwise: yup.mixed().notRequired(),
         }),
       related: yup.mixed()
         .when('type', {
-          is: val => val === navigationItemType.INTERNAL || isNil(val),
+          is: (val: NavigationItemType) => val === navigationItemType.INTERNAL || isNil(val),
           then: isSingleSelected ? yup.mixed().notRequired() : yup.mixed().required(translatedErrors.required),
           otherwise: yup.mixed().notRequired(),
         }),

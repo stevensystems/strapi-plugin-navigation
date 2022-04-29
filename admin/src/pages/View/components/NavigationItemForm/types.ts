@@ -1,5 +1,6 @@
-import { Audience, NavigationItemAdditionalField, NavigationItemType, PluginConfigNameFields, ToBeFixed } from '../../../../../../types';
+import { Audience, ContentTypeEntity, NavigationItemAdditionalField, NavigationItemType, PluginConfigNameFields, ToBeFixed } from '../../../../../../types';
 import { Id } from 'strapi-typed';
+import { ContentTypeToFix } from '../../../SettingsPage/types';
 
 export type NavigationItemFormData = {
   isMenuAllowedLevel: boolean,
@@ -34,20 +35,20 @@ export type NavigationItemFormData = {
 
 export type NavigationItemFormProps = {
   additionalFields: NavigationItemAdditionalField[];
-  appendLabelPublicationStatus: (label: string, entity: ToBeFixed) => string; // TODO: Content type entity type
+  appendLabelPublicationStatus: (label: string, entity: ContentTypeEntity) => string;
   availableAudience: string[];
-  contentTypeEntities: ToBeFixed[]; // TODO: Type this pls
-  contentTypes: ToBeFixed[]; // TODO: Type this pls
+  contentTypeEntities: ContentTypeEntity[];
+  contentTypes: ContentTypeToFix[];
   contentTypesNameFields: PluginConfigNameFields;
   data: NavigationItemFormData;
-  getContentTypeEntities: (value: {modelUID: string, query: ContentTypeSearchQuery, locale: ToBeFixed}, plugin: string) => ToBeFixed // TODO: Type this pls
+  getContentTypeEntities: (value: { modelUID: string, query: ContentTypeSearchQuery, locale: ToBeFixed }, plugin: string) => ContentTypeEntity;
   inputsPrefix: string;
   isLoading: boolean;
   locale: ToBeFixed;
-  onCancel: () => ToBeFixed; // TODO: Type this pls
+  onCancel: () => void;
   onSubmit: (payload: SanitizedFormPayload) => void;
-  usedContentTypeEntities: ToBeFixed[]; // TODO: Type this pls
-  usedContentTypesData: ToBeFixed; // TODO: Type this pls
+  usedContentTypeEntities: ToBeFixed[];
+  usedContentTypesData: ToBeFixed;
 }
 
 export type ContentTypeSearchQuery = ToBeFixed;
@@ -72,6 +73,6 @@ export type SanitizedFormPayload = {
   related: Id | undefined;
   relatedType: string | undefined;
   isSingle: boolean;
-  singleRelatedItem: ToBeFixed; // TODO: This is contentTypeEntity type or undefined
+  singleRelatedItem: ContentTypeEntity | undefined;
   uiRouterKey: string | undefined;
 }

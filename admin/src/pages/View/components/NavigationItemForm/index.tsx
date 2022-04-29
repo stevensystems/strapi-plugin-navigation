@@ -3,7 +3,6 @@ import { debounce, find, get, first, isEmpty, isEqual, isNil, isString } from 'l
 import slugify from 'slugify';
 //@ts-ignore
 import { Formik } from 'formik';
-
 //@ts-ignore
 import { ModalBody } from '@strapi/design-system/ModalLayout';
 //@ts-ignore
@@ -295,7 +294,6 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
   }, [relatedType, contentTypeSearchQuery]);
   return (
     <>
-      <Formik>
         <Form>
           <ModalBody>
             <Grid gap={5} >
@@ -472,7 +470,6 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
             </Grid>
           </ModalBody>
         </Form>
-      </Formik>
       <NavigationItemPopupFooter handleSubmit={handleSubmit} handleCancel={onCancel} submitDisabled={submitDisabled} />
     </>
   );
