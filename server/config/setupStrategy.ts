@@ -40,7 +40,7 @@ export const configSetupStrategy: IConfigSetupStrategy = async ({ strapi }) => {
     pruneObsoleteI18nNavigations: false,
   };
 
-  pluginStore.set({
+  await pluginStore.set({
     key: "config",
     value: config,
   });

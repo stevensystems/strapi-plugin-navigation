@@ -294,6 +294,7 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
   }, [relatedType, contentTypeSearchQuery]);
   return (
     <>
+      <Formik>
         <Form>
           <ModalBody>
             <Grid gap={5} >
@@ -470,6 +471,7 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
             </Grid>
           </ModalBody>
         </Form>
+      </Formik>
       <NavigationItemPopupFooter handleSubmit={handleSubmit} handleCancel={onCancel} submitDisabled={submitDisabled} />
     </>
   );

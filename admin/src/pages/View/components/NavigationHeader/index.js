@@ -79,7 +79,7 @@ const NavigationHeader = ({
                 </GridItem>
               : null
             }
-            <GridItem col="3">
+            <GridItem col={3}>
               <Button
                 onClick={handleSave}
                 startIcon={submitIcon}

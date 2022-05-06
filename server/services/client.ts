@@ -299,6 +299,7 @@ const clientService: (context: StrapiContext) => IClientService = ({ strapi }) =
                 parentPath,
                 itemParser,
               ),
+              ...item.additionalFields,
             };
           };
 
@@ -331,12 +332,13 @@ const clientService: (context: StrapiContext) => IClientService = ({ strapi }) =
         default:
           const publishedItems = items.filter(filterOutUnpublished);
           const result = isNil(rootPath) ? items : filterByPath(publishedItems, rootPath).items;
-          return result.map((item: NavigationItemEntity<ContentTypeEntity>) => ({
+          return result.map(({additionalFields, ...item}: NavigationItemEntity<ContentTypeEntity>) => ({
             ...item,
-            audience: item.audience?.map(_ => (_).key),
-            title: composeItemTitle(item, contentTypesNameFields, contentTypes) || '',
+            audience: !isEmpty(item.audience) ? item.audience!.map(aItem => (aItem).key) : undefined,
+            title: composeItemTitle({ ...item, additionalFields }, contentTypesNameFields, contentTypes) || '',
             related: wrapContentType(item.related),//omit(item.related, 'localizations'),
             items: null,
+            ...additionalFields,
           }));
       }
     }
