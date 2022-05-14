@@ -12,6 +12,8 @@ export type RenderType = keyof RenderTypeOptions;
 export type StrapiRoutesTypes = 'admin' | 'content-api';
 export type ToBeFixed = any;
 export type DateString = string;
+export type ChangeEffect<Args> = (args: Args) => void; 
+export type VoidEffect = ChangeEffect<void>;
 
 export type NavigationActions = {
   create?: boolean,

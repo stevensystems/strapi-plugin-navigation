@@ -284,7 +284,7 @@ export const isContentTypeEligible = (
   return uid && isOneOfAllowedType && isNoneOfRestricted;
 }
 
-export const getPluginModels = (): Record<string, StrapiContentTypeFullSchema> => {
+export const getPluginModels = (): Record<'masterModel' | 'itemModel' | 'relatedModel' | 'audienceModel', StrapiContentTypeFullSchema> => {
   const plugin = strapi.plugin('navigation');
   return {
     masterModel: plugin.contentType('navigation'),

@@ -1,8 +1,7 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { debounce, find, get, first, isEmpty, isEqual, isNil, isString } from 'lodash';
+import React, { useEffect, useMemo, useState, useCallback, BaseSyntheticEvent } from 'react';
+import { debounce, find, get, first, isEmpty, isEqual, isNil, isString, isObject } from 'lodash';
 import slugify from 'slugify';
-//@ts-ignore
-import { Formik } from 'formik';
+import { useFormik, FormikProps } from 'formik';
 //@ts-ignore
 import { ModalBody } from '@strapi/design-system/ModalLayout';
 //@ts-ignore
@@ -10,22 +9,21 @@ import { Select, Option } from '@strapi/design-system/Select';
 //@ts-ignore
 import { Grid, GridItem } from '@strapi/design-system/Grid';
 //@ts-ignore
-import { Form, GenericInput } from '@strapi/helper-plugin';
+import { GenericInput } from '@strapi/helper-plugin';
 
 import { NavigationItemPopupFooter } from '../NavigationItemPopup/NavigationItemPopupFooter';
 import { navigationItemType } from '../../utils/enums';
 import { extractRelatedItemLabel } from '../../utils/parsers';
-import { form as formDefinition } from './utils/form';
+import * as formDefinition from './utils/form';
 import { checkFormValidity } from '../../utils/form';
-import { getTradId } from '../../../../translations';
+import { getTrad, getTradId } from '../../../../translations';
 import { Audience, NavigationItemAdditionalField, NavigationItemType, ToBeFixed } from '../../../../../../types';
-import { ContentTypeSearchQuery, NavigationItemFormProps, RawFormPayload, SanitizedFormPayload } from './types';
+import { ContentTypeSearchQuery, FormEventTarget, NavigationItemFormData, NavigationItemFormProps, RawFormPayload, SanitizedFormPayload } from './types';
 import AdditionalFieldInput from '../../../../components/AdditionalFieldInput';
 import { getMessage } from '../../../../utils';
 
 const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
   isLoading,
-  inputsPrefix = '',
   data = {},
   contentTypes = [],
   contentTypeEntities = [],
@@ -44,32 +42,37 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
   const [hasChanged, setChangedState] = useState(false);
   const [contentTypeSearchQuery, setContentTypeSearchQuery] = useState<ContentTypeSearchQuery>(undefined);
   const [contentTypeSearchInputValue, setContentTypeSearchInputValue] = useState(undefined);
-  const [form, setFormState] = useState<Partial<RawFormPayload>>({});
-  const [formErrors, setFormErrorsState] = useState({});
-  const { relatedType } = form;
-
-  const relatedFieldName = `${inputsPrefix}related`;
+  const formik: FormikProps<RawFormPayload> = useFormik<RawFormPayload>({
+    initialValues: formDefinition.defaultValues,
+    onSubmit: (payload) => onSubmit(sanitizePayload(payload, data)),
+    validate: (values) => checkFormValidity(sanitizePayload(values, {}), formDefinition.schemaFactory(isSingleSelected)),
+    validateOnChange: false,
+  });
 
   if (!hasBeenInitialized && !isEmpty(data)) {
     setInitializedState(true);
-    setFormState({
-      ...data,
-      type: data.type || "INTERNAL",
-      related: data.related?.value,
-      relatedType: data.relatedType?.value,
-      audience: data.audience?.map((item: Audience) => item.id),
+    formik.setValues({
+      type: get(data, "type", formDefinition.defaultValues.type),
+      related: get(data, "related.value", formDefinition.defaultValues.related),
+      relatedType: get(data, "relatedType.value", formDefinition.defaultValues.relatedType),
+      audience: get(data, "audience", formDefinition.defaultValues.audience).map((item: Audience | number) => isObject(item) ? item.id : item),
+      additionalFields: get(data, "additionalFields", formDefinition.defaultValues.additionalFields),
+      menuAttached: get(data, "menuAttached", formDefinition.defaultValues.menuAttached),
+      path: get(data, "path", formDefinition.defaultValues.path),
+      externalPath: get(data, "externalPath", formDefinition.defaultValues.externalPath),
+      title: get(data, "title", formDefinition.defaultValues.title),
+      updated: formDefinition.defaultValues.updated,
     });
   }
 
-  const audience = get(form, `${inputsPrefix}audience`, []);
-  const audienceOptions = availableAudience.map((item) => ({
+  const audienceOptions = useMemo(() => availableAudience.map((item) => ({
     value: get(item, 'id', " "),
     label: get(item, 'name', " "),
-  }));
+  })), [availableAudience]);
 
   const generatePreviewPath = () => {
     if (!isExternal) {
-      const value = `${data.levelPath !== '/' ? `${data.levelPath}` : ''}/${form.path !== '/' ? form.path || '' : ''}`;
+      const value = `${data.levelPath !== '/' ? `${data.levelPath}` : ''}/${formik.values.path !== '/' ? formik.values.path || '' : ''}`;
       return {
         id: getTradId('popup.item.form.type.external.description'),
         defaultMessage: '',
@@ -79,7 +82,7 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
     return null;
   };
 
-  const sanitizePayload = (payload: RawFormPayload): SanitizedFormPayload => {
+  const sanitizePayload = (payload: RawFormPayload, data: Partial<NavigationItemFormData>): SanitizedFormPayload => {
     const { related, relatedType, menuAttached, type, ...purePayload } = payload;
     const relatedId = related;
     const singleRelatedItem = isSingleSelected ? first(contentTypeEntities) : undefined;
@@ -87,6 +90,7 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
     const title = payload.title;
 
     return {
+      ...data,
       ...purePayload,
       title,
       type,
@@ -101,47 +105,36 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
     };
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    if (e) {
-      e.preventDefault();
-    }
-
-    const payload = sanitizePayload(form as RawFormPayload);
-    const errors = await checkFormValidity(payload, formDefinition.schema(isSingleSelected));
-    if (!errors || isEmpty(errors)) {
-      return onSubmit(payload);
-    } else {
-      setFormErrorsState(errors);
-    }
-  };
-
-  const onAudienceChange = (value: string) => {
-    onChange({ target: { name: `${inputsPrefix}audience`, value } });
-  }
-
-  const onAdditionalFieldChange = (name: string, newValue: string | boolean | string[]) => {
-    const fieldsValue = get(form, `${inputsPrefix}additionalFields`, {});
-    const value = { ...fieldsValue, [name]: newValue }
-    onChange({
-      target: {
-        name: `${inputsPrefix}additionalFields`,
-        value,
-      },
-    });
-  }
-
-  const onChange = ({ target: { name, value } }: { target: { name: string, value: unknown } }) => {
-    setFormState(prevState => ({
+  const onChange = ({ name, value }: FormEventTarget) => {
+    formik.setValues((prevState) => ({
       ...prevState,
       updated: true,
       [name]: value,
     }));
+
+    if (name === "type") {
+      formik.setErrors({});
+    }
+
     if (!hasChanged) {
       setChangedState(true);
     }
   };
 
-  const generateUiRouterKey = (title: string, related: string, relatedType: string): string | undefined => {
+  const onAudienceChange = useCallback((value: string) => {
+    onChange({ name: "audience", value });
+  }, [onChange]);
+
+  const onAdditionalFieldChange = (name: string, newValue: string | boolean | string[]) => {
+    const fieldsValue = formik.values.additionalFields;
+    const value = { ...fieldsValue, [name]: newValue }
+    onChange({
+      name: "additionalFields",
+      value,
+    });
+  }
+
+  const generateUiRouterKey = (title: string, related?: string, relatedType?: string): string | undefined => {
     if (title) {
       return isString(title) && !isEmpty(title) ? slugify(title).toLowerCase() : undefined;
     } else if (related) {
@@ -154,9 +147,9 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
     return undefined;
   };
 
-  const initialRelatedTypeSelected = data?.relatedType?.value;
-  const relatedTypeSelectValue = form.relatedType;
-  const relatedSelectValue = form.related;
+  const initialRelatedTypeSelected = get(data, 'relatedType.value');
+  const relatedTypeSelectValue = formik.values.relatedType;
+  const relatedSelectValue = formik.values.related;
 
   const isSingleSelected = useMemo(
     () => relatedTypeSelectValue ? contentTypes.find(_ => _.uid === relatedTypeSelectValue)?.isSingle || false : false,
@@ -181,7 +174,7 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
     .filter((item) => {
       const usedContentTypeEntitiesOfSameType = usedContentTypeEntities
         .filter(uctItem => relatedTypeSelectValue === uctItem.__collectionUid);
-      return !find(usedContentTypeEntitiesOfSameType, uctItem => (item.id === uctItem.id && uctItem.id !== form.related));
+      return !find(usedContentTypeEntitiesOfSameType, uctItem => (item.id === uctItem.id && uctItem.id !== formik.values.related));
     })
     .map((item) => {
       const label = appendLabelPublicationStatus(
@@ -204,12 +197,11 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
       })
     });
 
-  const isExternal = form.type === navigationItemType.EXTERNAL;
+  const isExternal = formik.values.type === navigationItemType.EXTERNAL;
   const pathSourceName = isExternal ? 'externalPath' : 'path';
 
   const submitDisabled =
-    (form.type === navigationItemType.INTERNAL && !isSingleSelected && isNil(get(form, `${inputsPrefix}related`))) ||
-    (form.type === navigationItemType.WRAPPER && isNil(get(form, `${inputsPrefix}title`)));
+    (formik.values.type === navigationItemType.INTERNAL && !isSingleSelected && isNil(formik.values.related));
 
   const debouncedSearch = useCallback(
     debounce(nextValue => setContentTypeSearchQuery(nextValue), 500),
@@ -225,12 +217,13 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
     const relatedTypeBeingReverted = data.relatedType && (data.relatedType.value === get(value, 'value', value));
     setContentTypeSearchQuery(undefined);
     setContentTypeSearchInputValue(undefined);
-    setFormState(prevState => ({
+    formik.setValues(prevState => ({
       ...prevState,
       updated: true,
       related: relatedTypeBeingReverted ? data.related?.value : undefined,
       [name]: value,
     }));
+
     if (!hasChanged) {
       setChangedState(true);
     }
@@ -243,7 +236,7 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
           if (relatedTypeSelectValue && [relatedTypeSelectValue, initialRelatedTypeSelected].includes(contentType.uid)) {
             return true;
           }
-          return !usedContentTypesData.some((_: ToBeFixed) => _.__collectionUid === contentType.uid && _.__collectionUid !== form.relatedType);
+          return !usedContentTypesData.some((_: ToBeFixed) => _.__collectionUid === contentType.uid && _.__collectionUid !== formik.values.relatedType);
         }
         return true;
       })
@@ -267,14 +260,14 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
     () => {
       const value = get(relatedSelectOptions, '0');
       if (isSingleSelected && relatedSelectOptions.length === 1 && !isEqual(value, relatedSelectValue)) {
-        onChange({ target: { name: relatedFieldName, value } });
+        onChange({ name: "related", value });
       }
     },
     [isSingleSelected, relatedSelectOptions],
   );
 
   useEffect(() => {
-    const value = relatedType;
+    const value = formik.values.relatedType;
     const fetchContentTypeEntities = async () => {
       if (value) {
         const item = find(
@@ -291,188 +284,148 @@ const NavigationItemForm: React.FC<NavigationItemFormProps> = ({
       }
     };
     fetchContentTypeEntities();
-  }, [relatedType, contentTypeSearchQuery]);
+  }, [formik.values.relatedType, contentTypeSearchQuery]);
   return (
     <>
-      <Formik>
-        <Form>
-          <ModalBody>
-            <Grid gap={5} >
-              <GridItem key={`${inputsPrefix}title`} col={12} >
-                <GenericInput
-                  autoFocused={true}
-                  intlLabel={{
-                    id: getTradId('popup.item.form.title.label'),
-                    defaultMessage: 'Title',
-                  }
-                  }
-                  name={`${inputsPrefix}title`}
-                  placeholder={{
-                    id: "e.g. Blog",
-                    defaultMessage: 'e.g. Blog',
-                  }}
-                  description={{
-                    id: getTradId('popup.item.form.title.placeholder'),
-                    defaultMessage: 'e.g. Blog',
-                  }}
-                  type='text'
-                  error={get(formErrors, `${inputsPrefix}title.id`)}
-                  onChange={onChange}
-                  value={get(form, `${inputsPrefix}title`, '')}
-                />
-              </GridItem>
-              <GridItem key={`${inputsPrefix}type`} col={4} lg={12}>
-                <GenericInput
-                  intlLabel={{
-                    id: getTradId('popup.item.form.type.label'),
-                    defaultMessage: 'Internal link',
-                  }}
-                  name={`${inputsPrefix}type`}
-                  options={navigationItemTypeOptions}
-                  type='select'
-                  error={get(formErrors, `${inputsPrefix}type.id`)}
-                  onChange={onChange}
-                  value={get(form, `${inputsPrefix}type`, '')}
-                />
-              </GridItem>
-              <GridItem key={`${inputsPrefix}menuAttached`} col={4} lg={12}>
-                <GenericInput
-                  intlLabel={{
-                    id: getTradId('popup.item.form.menuAttached.label'),
-                    defaultMessage: 'MenuAttached',
-                  }}
-                  name={`${inputsPrefix}menuAttached`}
-                  type='bool'
-                  error={get(formErrors, `${inputsPrefix}menuAttached.id`)}
-                  onChange={onChange}
-                  value={get(form, `${inputsPrefix}menuAttached`, '')}
-                  disabled={!(data.isMenuAllowedLevel && data.parentAttachedToMenu)}
-                />
-              </GridItem>
-              <GridItem key={`${inputsPrefix}path`} col={12}>
-                <GenericInput
-                  intlLabel={{
-                    id: getTradId(`popup.item.form.${pathSourceName}.label`),
-                    defaultMessage: 'Path',
-                  }}
-                  name={`${inputsPrefix}${pathSourceName}`}
-                  placeholder={{
-                    id: getTradId(`popup.item.form.${pathSourceName}.placeholder`),
-                    defaultMessage: 'e.g. Blog',
-                  }}
-                  type='text'
-                  error={get(formErrors, `${inputsPrefix}${pathSourceName}.id`)}
-                  onChange={onChange}
-                  value={get(form, `${inputsPrefix}${pathSourceName}`, '')}
-                  description={generatePreviewPath()}
-                />
-              </GridItem>
-              {get(form, `${inputsPrefix}type`) === navigationItemType.INTERNAL && (
-                <>
+      <form>
+        <ModalBody>
+          <Grid gap={5} >
+            <GridItem key="title" col={12}>
+              <GenericInput
+                autoFocused={true}
+                intlLabel={getTrad('popup.item.form.title.label', 'Title')}
+                name="title"
+                placeholder={getTrad("e.g. Blog", 'e.g. Blog')}
+                description={getTrad('popup.item.form.title.placeholder', 'e.g. Blog')}
+                type="text"
+                error={formik.errors.title}
+                onChange={({ target: { name, value } }: BaseSyntheticEvent) => onChange({ name, value })}
+                value={formik.values.title}
+              />
+            </GridItem>
+            <GridItem key="type" col={4} lg={12}>
+              <GenericInput
+                intlLabel={getTrad('popup.item.form.type.label', 'Internal link')}
+                name="type"
+                options={navigationItemTypeOptions}
+                type="select"
+                error={formik.errors.type}
+                onChange={({ target: { name, value } }: BaseSyntheticEvent) => onChange({ name, value })}
+                value={formik.values.type}
+              />
+            </GridItem>
+            <GridItem key="menuAttached" col={4} lg={12}>
+              <GenericInput
+                intlLabel={getTrad('popup.item.form.menuAttached.label', 'MenuAttached')}
+                name="menuAttached"
+                type="bool"
+                error={formik.errors.menuAttached}
+                onChange={({ target: { name, value } }: BaseSyntheticEvent) => onChange({ name, value })}
+                value={formik.values.menuAttached}
+                disabled={!(data.isMenuAllowedLevel && data.parentAttachedToMenu)}
+              />
+            </GridItem>
+            <GridItem key="path" col={12}>
+              <GenericInput
+                intlLabel={getTrad(`popup.item.form.${pathSourceName}.label`, 'Path')}
+                name={pathSourceName}
+                placeholder={getTrad(`popup.item.form.${pathSourceName}.placeholder`, 'e.g. Blog')}
+                type="text"
+                error={formik.errors[pathSourceName]}
+                onChange={({ target: { name, value } }: BaseSyntheticEvent) => onChange({ name, value })}
+                value={formik.values[pathSourceName]}
+                description={generatePreviewPath()}
+              />
+            </GridItem>
+            {formik.values.type === navigationItemType.INTERNAL && (
+              <>
+                <GridItem col={6} lg={12}>
+                  <GenericInput
+                    type="select"
+                    intlLabel={getTrad('popup.item.form.relatedType.label', 'Related Type')}
+                    placeholder={getTrad('popup.item.form.relatedType.placeholder', 'Related Type')}
+                    name="relatedType"
+                    error={formik.errors.relatedType}
+                    onChange={onChangeRelatedType}
+                    options={relatedTypeSelectOptions}
+                    value={formik.values.relatedType}
+                    disabled={isLoading || isEmpty(relatedTypeSelectOptions)}
+                    description={
+                      !isLoading && isEmpty(relatedTypeSelectOptions)
+                        ? getTrad('popup.item.form.relatedType.empty', 'There are no more content types')
+                        : undefined
+                    }
+                  />
+                </GridItem>
+                {formik.values.relatedType && !isSingleSelected && (
                   <GridItem col={6} lg={12}>
                     <GenericInput
                       type="select"
-                      intlLabel={{
-                        id: getTradId('popup.item.form.relatedType.label'),
-                        defaultMessage: 'Related Type'
-                      }}
-                      placeholder={{
-                        id: getTradId('popup.item.form.relatedType.placeholder'),
-                        defaultMessage: 'Related Type'
-                      }}
-                      name={`${inputsPrefix}relatedType`}
-                      error={get(formErrors, `${inputsPrefix}relatedType.id`)}
-                      onChange={onChangeRelatedType}
-                      options={relatedTypeSelectOptions}
-                      value={relatedTypeSelectValue}
-                      disabled={isLoading || isEmpty(relatedTypeSelectOptions)}
+                      intlLabel={getTrad('popup.item.form.related.label', 'Related')}
+                      placeholder={getTrad('popup.item.form.related.label', 'Related')}
+                      name="related"
+                      error={formik.errors.related}
+                      onChange={({ target: { name, value } }: BaseSyntheticEvent) => onChange({ name, value })}
+                      onInputChange={debounceContentTypeSearchQuery}
+                      inputValue={contentTypeSearchInputValue}
+                      options={relatedSelectOptions}
+                      value={formik.values.related}
+                      disabled={isLoading || thereAreNoMoreContentTypes}
                       description={
-                        !isLoading && isEmpty(relatedTypeSelectOptions)
+                        !isLoading && thereAreNoMoreContentTypes
                           ? {
-                            id: getTradId('popup.item.form.relatedType.empty'),
-                            defaultMessage: 'There are no more content types',
+                            id: getTradId('popup.item.form.related.empty'),
+                            defaultMessage: 'There are no more entities',
+                            values: { contentTypeName: relatedTypeSelectValue },
                           }
                           : undefined
                       }
                     />
                   </GridItem>
-                  {relatedTypeSelectValue && !isSingleSelected && (
-                    <GridItem col={6} lg={12}>
-                      <GenericInput
-                        type="select"
-                        intlLabel={{
-                          id: getTradId('popup.item.form.related.label'),
-                          defaultMessage: 'Related'
-                        }}
-                        placeholder={{
-                          id: getTradId('popup.item.form.related.label'),
-                          defaultMessage: 'Related'
-                        }}
-                        name={relatedFieldName}
-                        error={get(formErrors, `${relatedFieldName}.id`)}
-                        onChange={onChange}
-                        onInputChange={debounceContentTypeSearchQuery}
-                        inputValue={contentTypeSearchInputValue}
-                        options={relatedSelectOptions}
-                        value={relatedSelectValue}
-                        disabled={isLoading || thereAreNoMoreContentTypes}
-                        description={
-                          !isLoading && thereAreNoMoreContentTypes
-                            ? {
-                              id: getTradId('popup.item.form.related.empty'),
-                              defaultMessage: 'There are no more entities',
-                              values: { contentTypeName: relatedTypeSelectValue },
-                            }
-                            : undefined
-                        }
-                      />
-                    </GridItem>
-                  )}
-                </>
-              )}
+                )}
+              </>
+            )}
 
-              {additionalFields.map((additionalField: NavigationItemAdditionalField) => {
-                if (additionalField === 'audience') {
-                  return (
-                    <GridItem key={`${inputsPrefix}audience`} col={6} lg={12}>
-                      <Select
-                        id={`${inputsPrefix}audience`}
-                        placeholder={getMessage('popup.item.form.audience.placeholder')}
-                        label={getMessage('popup.item.form.audience.label')}
-                        onChange={onAudienceChange}
-                        value={audience}
-                        hint={
-                          !isLoading && isEmpty(audienceOptions)
-                            ? getMessage('popup.item.form.audience.empty', 'There are no more audiences')
-                            : undefined
-                        }
-                        multi
-                        withTags
-                        disabled={isEmpty(audienceOptions)}
-                      >
-                        {audienceOptions.map(({ value, label }) => <Option key={value} value={value}>{label}</Option>)}
-                      </Select>
-                    </GridItem>
-                  )
-                } else {
-                  return (
-                    <GridItem key={`${inputsPrefix}${additionalField.name}`} col={6} lg={12}>
-                      <AdditionalFieldInput
-                        field={additionalField}
-                        inputsPrefix={inputsPrefix}
-                        isLoading={isLoading}
-                        onChange={onAdditionalFieldChange}
-                        value={get(form, `${inputsPrefix}additionalFields.${additionalField.name}`, null)}
-                      />
-                    </GridItem>
-                  );
-                }
-              })}
-            </Grid>
-          </ModalBody>
-        </Form>
-      </Formik>
-      <NavigationItemPopupFooter handleSubmit={handleSubmit} handleCancel={onCancel} submitDisabled={submitDisabled} />
+            {additionalFields.map((additionalField: NavigationItemAdditionalField) => {
+              if (additionalField === 'audience') {
+                return (
+                  <GridItem key="audience" col={6} lg={12}>
+                    <Select
+                      id="audience"
+                      placeholder={getMessage('popup.item.form.audience.placeholder')}
+                      label={getMessage('popup.item.form.audience.label')}
+                      onChange={onAudienceChange}
+                      value={formik.values.audience}
+                      hint={
+                        !isLoading && isEmpty(audienceOptions)
+                          ? getMessage('popup.item.form.audience.empty', 'There are no more audiences')
+                          : undefined
+                      }
+                      multi
+                      withTags
+                      disabled={isEmpty(audienceOptions)}
+                    >
+                      {audienceOptions.map(({ value, label }) => <Option key={value} value={value}>{label}</Option>)}
+                    </Select>
+                  </GridItem>
+                )
+              } else {
+                return (
+                  <GridItem key={additionalField.name} col={6} lg={12}>
+                    <AdditionalFieldInput
+                      field={additionalField}
+                      isLoading={isLoading}
+                      onChange={onAdditionalFieldChange}
+                      value={get(formik.values, `additionalFields.${additionalField.name}`, null)}
+                    />
+                  </GridItem>
+                );
+              }
+            })}
+          </Grid>
+        </ModalBody>
+      </form>
+      <NavigationItemPopupFooter handleSubmit={formik.handleSubmit} handleCancel={onCancel} submitDisabled={submitDisabled} />
     </>
   );
 };

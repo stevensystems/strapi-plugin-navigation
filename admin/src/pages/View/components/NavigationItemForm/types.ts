@@ -1,36 +1,47 @@
-import { Audience, ContentTypeEntity, NavigationItemAdditionalField, NavigationItemType, PluginConfigNameFields, ToBeFixed } from '../../../../../../types';
+import { Audience, ChangeEffect, ContentTypeEntity, NavigationItemAdditionalField, NavigationItemType, PluginConfigNameFields, ToBeFixed, VoidEffect } from '../../../../../../types';
 import { Id } from 'strapi-typed';
 import { ContentTypeToFix } from '../../../SettingsPage/types';
 
+export type FormEventTarget<TValue = unknown> = {
+  name: string,
+  value: TValue
+}
+
+type GetContentTypeEntitiesPayload = {
+  modelUID: string;
+  query: ContentTypeSearchQuery;
+  locale: ToBeFixed;
+}
+
 export type NavigationItemFormData = {
-  isMenuAllowedLevel: boolean,
-  levelPath: string,
-  parentAttachedToMenu: boolean
-  audience?: Audience[],
-  collapsed?: boolean,
-  externalPath?: string | null,
-  id?: Id,
-  isParentAttachedToMenu?: boolean,
-  items?: ToBeFixed[],
-  menuAttached?: boolean,
-  order?: number,
-  parent?: ToBeFixed,
-  path?: string | null,
-  title?: string,
-  type?: NavigationItemType,
-  uiRouterKey?: string,
-  updated?: boolean,
-  viewId?: string,
-  viewParentId: string | null, 
+  isMenuAllowedLevel: boolean;
+  levelPath: string;
+  parentAttachedToMenu: boolean;
+  audience?: Audience[];
+  collapsed?: boolean;
+  externalPath?: string | null;
+  id?: Id;
+  isParentAttachedToMenu?: boolean;
+  items?: ToBeFixed[];
+  menuAttached?: boolean;
+  order?: number;
+  parent?: ToBeFixed;
+  path?: string | null;
+  title?: string;
+  type?: NavigationItemType;
+  uiRouterKey?: string;
+  updated?: boolean;
+  viewId?: string;
+  viewParentId: string | null;
   related?: {
-      value: string,
-      label: string
-  },
+    value: string;
+    label: string;
+  };
   relatedType?: {
-    value: string,
-    label: string
-  },
-  relatedRef?: ToBeFixed,
+    value: string;
+    label: string;
+  };
+  relatedRef?: ToBeFixed;
 }
 
 export type NavigationItemFormProps = {
@@ -41,12 +52,11 @@ export type NavigationItemFormProps = {
   contentTypes: ContentTypeToFix[];
   contentTypesNameFields: PluginConfigNameFields;
   data: NavigationItemFormData;
-  getContentTypeEntities: (value: { modelUID: string, query: ContentTypeSearchQuery, locale: ToBeFixed }, plugin: string) => ContentTypeEntity;
-  inputsPrefix: string;
+  getContentTypeEntities: (value: GetContentTypeEntitiesPayload, plugin: string) => ContentTypeEntity;
   isLoading: boolean;
   locale: ToBeFixed;
-  onCancel: () => void;
-  onSubmit: (payload: SanitizedFormPayload) => void;
+  onCancel: VoidEffect;
+  onSubmit: ChangeEffect<SanitizedFormPayload>;
   usedContentTypeEntities: ToBeFixed[];
   usedContentTypesData: ToBeFixed;
 }
@@ -54,14 +64,15 @@ export type NavigationItemFormProps = {
 export type ContentTypeSearchQuery = ToBeFixed;
 export type RawFormPayload = {
   type: NavigationItemType;
-  related: string;
-  relatedType: string;
+  related?: string;
+  relatedType?: string;
   audience: Id[];
   menuAttached: boolean;
   title: string;
   externalPath: string | null;
   path: string | null;
   additionalFields: Record<string, string | boolean | string[]> // { cf_name: cf_value }
+  updated: boolean;
 }
 
 export type SanitizedFormPayload = {
