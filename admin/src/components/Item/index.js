@@ -111,7 +111,7 @@ const Item = (props) => {
   const [{ isDragging }, drag, dragPreview] = useDrag({
     type: `${ItemTypes.NAVIGATION_ITEM}_${levelPath}`,
     item: () => {
-      return { ...item, relatedRef };
+      return item;
     },
     collect: monitor => ({
       isDragging: monitor.isDragging(),
@@ -149,20 +149,13 @@ const Item = (props) => {
               title={title}
               path={isExternal ? externalPath : absolutePath}
               icon={isExternal ? Earth : isWrapper ? Cog : LinkIcon}
-              onItemRemove={() => onItemRemove({
-                ...item,
-                relatedRef,
-              })}
+              onItemRemove={() => onItemRemove(item)}
               onItemEdit={() => onItemEdit({
                 ...item,
                 isMenuAllowedLevel,
                 isParentAttachedToMenu,
-                relatedRef,
               }, levelPath, isParentAttachedToMenu)}
-              onItemRestore={() => onItemRestore({
-                ...item,
-                relatedRef,
-              })}
+              onItemRestore={() => onItemRestore(item)}
               dragRef={refs.dragRef}
               removed={removed}
             />
@@ -172,7 +165,7 @@ const Item = (props) => {
             <CardBody style={{ padding: '8px' }}>
               <Flex style={{ width: '100%' }} direction="row" alignItems="center" justifyContent="space-between">
                 <Flex>
-                  {!isEmpty(item.items) && <CollapseButton toggle={() => onItemToggleCollapse({...item, relatedRef})} collapsed={collapsed} itemsCount={item.items.length}/>}
+                  {!isEmpty(item.items) && <CollapseButton toggle={() => onItemToggleCollapse(item)} collapsed={collapsed} itemsCount={item.items.length}/>}
                   <TextButton
                     disabled={removed}
                     startIcon={<Plus />}
