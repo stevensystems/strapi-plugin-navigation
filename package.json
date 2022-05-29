@@ -1,6 +1,6 @@
 {
   "name": "strapi-plugin-navigation",
-  "version": "2.0.13",
+  "version": "2.0.14",
   "description": "Strapi - Navigation plugin",
   "strapi": {
     "name": "navigation",
@@ -10,7 +10,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/VirtusLab/strapi-plugin-navigation"
+    "url": "https://github.com/stevensystems/strapi-plugin-navigation",
+    "repository": "https://github.com/stevensystems/strapi-plugin-navigation"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "publish:latest": "npm publish --tag latest",
@@ -18,8 +22,8 @@
   },
   "dependencies": {
     "@strapi/utils": "^4.1.8",
-    "uuid": "^8.3.0",
     "lodash": "^4.17.11",
+    "pluralize": "^8.0.0",
     "react": "^16.9.0",
     "react-dom": "^16.9.0",
     "react-intl": "4.5.0",
@@ -30,14 +34,14 @@
     "redux-saga": "^0.16.0",
     "request": "^2.83.0",
     "slugify": "^1.4.5",
-    "pluralize": "^8.0.0"
+    "uuid": "^8.3.0"
   },
   "devDependencies": {
-    "koa": "^2.8.0",
+    "codecov": "^3.7.2",
     "jest": "^26.0.1",
     "jest-cli": "^26.0.1",
     "jest-styled-components": "^7.0.2",
-    "codecov": "^3.7.2"
+    "koa": "^2.8.0"
   },
   "peerDependencies": {
     "@strapi/strapi": "4.x"
@@ -68,6 +72,10 @@
     "node": ">=10.16.0",
     "npm": ">=6.0.0"
   },
-  "keywords": ["strapi", "plugin", "navigation"],
+  "keywords": [
+    "strapi",
+    "plugin",
+    "navigation"
+  ],
   "license": "MIT"
 }
