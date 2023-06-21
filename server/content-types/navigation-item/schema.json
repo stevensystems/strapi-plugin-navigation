@@ -33,6 +33,11 @@
         }
       }
     },
+    "icon": {
+      "type": "text",
+      "default": "HomeIcon",
+      "configurable": false
+    },
     "type": {
       "type": "enumeration",
       "enum": [

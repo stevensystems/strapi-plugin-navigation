@@ -16,6 +16,7 @@ export const form = {
             .required(translatedErrors.required),
           otherwise: yup.string().notRequired(),
         }),
+      icon: yup.string().notRequired(),
       uiRouterKey: yup.string().required(translatedErrors.required),
       type: yup.string().required(translatedErrors.required),
       path: yup.string()
@@ -29,7 +30,7 @@ export const form = {
           is: val => val === navigationItemType.EXTERNAL,
           then: yup.string()
             .required(translatedErrors.required)
-            .matches(/(#.*)|(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/, { 
+            .matches(/(#.*)|(https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|www\.[a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]\.[^\s]{2,}|https?:\/\/(?:www\.|(?!www))[a-zA-Z0-9]+\.[^\s]{2,}|www\.[a-zA-Z0-9]+\.[^\s]{2,})/, {
               excludeEmptyString: true,
               message: `${pluginId}.popup.item.form.externalPath.validation.type`,
             }),

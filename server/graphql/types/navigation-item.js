@@ -4,6 +4,7 @@ module.exports = ({ nexus }) =>
 		definition(t) {
 			t.nonNull.int("id")
 			t.nonNull.string("title")
+			t.string("icon")
 			t.nonNull.string("type")
 			t.string("path")
 			t.string("externalPath")

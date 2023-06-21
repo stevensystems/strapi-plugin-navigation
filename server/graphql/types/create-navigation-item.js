@@ -2,6 +2,7 @@ module.exports = ({ nexus }) => nexus.inputObjectType({
   name: "CreateNavigationItem",
   definition(t) {
     t.nonNull.string("title")
+    t.string("icon")
     t.nonNull.string("type")
     t.string("path")
     t.string("externalPath")
